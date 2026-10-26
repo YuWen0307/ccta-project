@@ -1,0 +1,61 @@
+# CT/CCTA 冠脉分割处理管线默认配置
+split:
+  # 患者级数据集划分比例
+  train_ratio: 0.7
+  val_ratio: 0.15
+  test_ratio: 0.15
+  random_seed: 42
+  save_csv: true
+  
+data:
+  raw_dir: "data/raw"            # 原始数据根目录
+  processed_dir: "data/processed" # 预处理后数据保存目录
+  cta_pattern: "*_cta.zip"       # CTA压缩包命名模式 (zip内为DCM序列)
+  mask_suffix: "_mask.nii.gz"    # 标注文件后缀
+
+preprocessing:
+  target_spacing: [0.5, 0.5, 0.5]  # 重采样目标间距 (mm)，各向同性
+  clip_intensity: [-100, 800]      # HU值裁剪范围（去除空气与高亮伪影）
+  crop_pad: 5                       # 裁剪后边界留空像素数
+  save_nifti: true                  # 是否保存预处理后的nii文件
+
+labels:
+  # 标签ID -> 名称映射（与标注文件一致）
+  names:
+    1: "RCA"      # 右冠状动脉
+    2: "LM"       # 左主干
+    3: "LAD"      # 左前降支
+    4: "LCX"      # 左回旋支
+    5: "RAMUS"    # 中间支
+    6: "D1"       # 第一对角支
+    7: "D2"       # 第二对角支
+    8: "POINT"    # 标记点
+  vessel_labels: [1, 2, 3, 4, 5, 6, 7]  # 血管标签（POINT单独处理）
+  point_label: 8
+
+centerline:
+  skeleton_method: "skimage"     # 骨架化方法: skimage
+  smooth: true                   # 是否平滑中心线
+  smooth_sigma: 1.0              # 高斯平滑sigma
+  min_length: 5                  # 中心线最短长度(体素)，过滤噪点
+
+features:
+  # 管径估计参数
+  radius_method: "distance_transform"  # 基于距离变换估计半径
+  # 曲折度计算参数
+  tortuosity_types: ["arc_chord", "sum_of_angles", "inflection_count"]
+  # 弧弦比，即血管实际路径长度与两端点直线距离的比值
+  # 角度累积和，统计血管走行过程中所有转向角度的累加值
+  # 拐点计数，统计血管路径上曲率方向发生反转的拐点总数量
+
+qc:
+  n_slices_per_view: 5           # 每个方向(轴/矢/冠)展示的切片数
+  overlay_alpha: 0.4             # mask叠加透明度
+  dpi: 150                       # 图片分辨率
+  save_per_patient: true         # 每个患者结果保存到独立文件夹
+
+output:
+  # 汇总功能开关：false = 不生成全局汇总CSV/分布图，仅输出逐患者报告
+  summary: false
+  reports_dir: "outputs/reports"          # 仅存放 split.csv 等划分产物
+  per_patient_dir: "outputs/per_patient"  # 逐患者报告目录（按 split 分层）
